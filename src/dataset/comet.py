@@ -100,6 +100,10 @@ class CometDataset(EventDataset):
             A tuple containing the word ID, original context, and masked context.
         """
         context_row = self.token_df[self.token_df['token_ID_within_document'] == word_id]
+        # Skip if no context found
+        if context_row.empty:
+          return word_id, "", ""  # Return empty strings or another default value
+        
         sentence_id = context_row['sentence_ID'].iloc[0]
         sentence_data = self.token_df[self.token_df['sentence_ID'] == sentence_id]
 
