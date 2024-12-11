@@ -42,7 +42,14 @@ class CometDataset(EventDataset):
         if len(token_files) != 1:
             raise ValueError("The directory should contain exactly one '.tokens' file.")
 
-        return pd.read_csv(token_files[0], sep='\t')
+        # Read the .tokens file into a DataFrame
+        df = pd.read_csv(token_files[0], sep='\t', engine='python', quoting=3)
+
+        # Validate that the row count matches the maximum token ID in the document
+        if df.shape[0] != df['token_ID_within_document'].tolist()[-1] + 1:
+            raise ValueError("The token DataFrame row count does not match the maximum token ID in the document.")
+
+        return df
 
     def _join_str(self, tokens: List[str]) -> str:
         """
@@ -88,7 +95,6 @@ class CometDataset(EventDataset):
                     order_idx += 1
                 word = mask_dict[word] + "'s" if possessive else mask_dict[word]
             output.append(word)
-
         return self._join_str(output)
 
     def _get_context(self, word_id: int) -> Tuple[int, str, str]:
@@ -100,23 +106,17 @@ class CometDataset(EventDataset):
             A tuple containing the word ID, original context, and masked context.
         """
         context_row = self.token_df[self.token_df['token_ID_within_document'] == word_id]
-        # Skip if no context found
-        if context_row.empty:
-          return word_id, "", ""  # Return empty strings or another default value
-        
         sentence_id = context_row['sentence_ID'].iloc[0]
         sentence_data = self.token_df[self.token_df['sentence_ID'] == sentence_id]
 
         indices = sentence_data['token_ID_within_document'].tolist()
         start_idx, end_idx = indices[0], indices[-1]
-        words = sentence_data['word'].tolist()
+        words = sentence_data['word'].astype(str).tolist()
         is_possessive = list(
             (sentence_data['POS_tag'] == 'PRON') & (sentence_data['dependency_relation'] == 'poss')
         )
-
         original_context = self._join_str(words)
         masked_context = self._masking(words, is_possessive, start_idx, end_idx)
-
         return word_id, original_context, masked_context
 
     @cached_property
