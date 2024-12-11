@@ -29,7 +29,7 @@ class CometDataset(EventDataset):
         if len(entity_files) != 1:
             raise ValueError("The directory should contain exactly one '.entities' file.")
 
-        data = pd.read_csv(entity_files[0], sep='\t')
+        data = pd.read_csv(entity_files[0], sep='\t', engine='python', quoting=3)
         filtered_data = data[(data['cat'] == 'PER') & (data['prop'] != 'NOM')].copy()
         return [group.to_dict('records') for _, group in filtered_data.groupby('COREF')]
 
