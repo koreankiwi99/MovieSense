@@ -4,10 +4,21 @@ from pathlib import Path
 import pandas as pd
 from typing import Dict, List, Union, Tuple
 import re
+import string
 from nltk.tokenize.treebank import TreebankWordDetokenizer as Detok
 
-# Define the order for masking entities
-ORDERING = ['X', 'Y', 'Z', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V']
+def get_variable_name(index):
+    base_vars = ['X', 'Y', 'Z', 'W', 'U', 'V']  # Initial set of variables in uppercase
+    all_letters = [chr(i).upper() for i in range(ord('a'), ord('z') + 1)]  # All uppercase letters
+    extended_vars = [var for var in all_letters if var not in base_vars]  # Exclude already used
+    full_vars = base_vars + extended_vars  # Combine base variables and remaining letters
+    
+    # Calculate the base index and suffix
+    base_index = index % len(full_vars)
+    suffix = index // len(full_vars)
+    
+    # Return the variable name with or without a suffix
+    return f"{full_vars[base_index]}{suffix}" if suffix > 0 else full_vars[base_index]
 
 class CometDataset(EventDataset):
     def __init__(self, dir: Path):
@@ -17,7 +28,18 @@ class CometDataset(EventDataset):
         super().__init__(dir)  # Pass 'dir' to the parent class
         self.dir = dir
         self.detokenizer = Detok()
+    
+    @cached_property
+    def entity_df(self) -> pd.DataFrame:
+        """
+        Load and return the entity data as a pandas DataFrame from '.entities' file.
+        """
+        entity_files = list(self.dir.glob('*.entities'))
+        if len(entity_files) != 1:
+            raise ValueError("The directory should contain exactly one '.entities' file.")
 
+        return pd.read_csv(entity_files[0], sep='\t', engine='python', quoting=3)
+        
     @cached_property
     def masked_entities(self) -> List[List[Dict[str, Union[str, int]]]]:
         """
@@ -25,12 +47,14 @@ class CometDataset(EventDataset):
         Returns:
             A list of grouped entity records for masking.
         """
-        entity_files = list(self.dir.glob('*.entities'))
-        if len(entity_files) != 1:
-            raise ValueError("The directory should contain exactly one '.entities' file.")
-
-        data = pd.read_csv(entity_files[0], sep='\t', engine='python', quoting=3)
-        filtered_data = data[(data['cat'] == 'PER') & (data['prop'] != 'NOM')].copy()
+        condition = (
+            (self.entity_df['prop'] != 'NOM') |
+            (self.entity_df['text'].str.lower().str.startswith('the ')) |
+             (self.entity_df['text'].str.split().str.len() < 3)
+             )
+        # Filter and copy relevant data
+        filtered_data = self.entity_df[(self.entity_df['cat'] == 'PER') & condition].copy()
+        # Group by 'COREF' and convert each group to a list of dictionaries
         return [group.to_dict('records') for _, group in filtered_data.groupby('COREF')]
 
     @cached_property
@@ -83,15 +107,20 @@ class CometDataset(EventDataset):
                 if start >= start_idx and end <= end_idx:
                     mask = [f'#Person{idx}'] + [''] * (end - start)
                     words[start - start_idx:end - start_idx + 1] = mask
+                    # Check if there is any False in the slice
+                    if not all(is_possessive[start - start_idx:end - start_idx + 1]):
+                      # Set all values in the slice to False
+                      is_possessive[start - start_idx:end - start_idx + 1] = [False] * (end - start + 1)
+                    
 
         mask_dict = {}
         order_idx = 0
         output = []
-
+        
         for word, possessive in zip(words, is_possessive):
             if word.startswith('#Person'):
                 if word not in mask_dict:
-                    mask_dict[word] = f'Person{ORDERING[order_idx]}'
+                    mask_dict[word] = f'Person{get_variable_name(order_idx)}'
                     order_idx += 1
                 word = mask_dict[word] + "'s" if possessive else mask_dict[word]
             output.append(word)
@@ -113,8 +142,9 @@ class CometDataset(EventDataset):
         start_idx, end_idx = indices[0], indices[-1]
         words = sentence_data['word'].astype(str).tolist()
         is_possessive = list(
-            (sentence_data['POS_tag'] == 'PRON') & (sentence_data['dependency_relation'] == 'poss')
-        )
+            (sentence_data['POS_tag'] == 'PRON') & 
+            ((sentence_data['dependency_relation'] == 'poss') | (sentence_data['dependency_relation'] == 'attr'))
+             )
         original_context = self._join_str(words)
         masked_context = self._masking(words, is_possessive, start_idx, end_idx)
         return word_id, original_context, masked_context
