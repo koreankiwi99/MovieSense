@@ -1,14 +1,3 @@
-# MovieSense Dataset
-
-@misc{kim2024moviesense,
-  author = {Kyuhee Kim and Team Deep5eekers},
-  title = {MovieSense: A Commonsense-Enriched Movie Summary Dataset},
-  year = {2024},
-  howpublished = {CS-401 Applied Data Analysis Project (Fall 2024)},
-  license = {CC BY-SA 4.0},
-  note = {Derived from the CMU Movie Summary Corpus (CC BY-SA 4.0) with entity resolution, event extraction, and commonsense inference.},
-  url = {[<your-dataset-link>](https://github.com/koreankiwi99/MovieSense)}
-}
 # MovieSense Dataset  
 
 **MovieSense** enriches the **CMU Movie Summary Corpus** with **coreference resolution, named entities, event extraction, and commonsense inferences**. **BookNLP** resolves character references and extracts entities, while **COMET** adds causal, motivational, and future inferences, enabling **narrative analysis, character modeling, and event prediction**.  
