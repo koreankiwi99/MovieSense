@@ -2,7 +2,7 @@
 
 **MovieSense** is an enriched version of the **CMU Movie Summary Corpus**, integrating **coreference resolution, named entity recognition, event extraction, and commonsense inference** to enhance narrative analysis. The **[BookNLP](https://github.com/booknlp/booknlp)** library resolves character references and extracts entities, while the **[COMET](https://github.com/atcbosselut/comet-commonsense)** model in the **[Kogito](https://github.com/kogito-computation/kogito)** library generates **causal, motivational, and future inferences** from extracted events. These enhancements enable deeper insights into **character interactions, narrative structures, and implicit commonsense knowledge**, making **MovieSense** valuable for **storytelling analysis, character modeling, and event prediction**.  
 
-This dataset was created as part of the **2024 Fall EPFL CS-401 Applied Data Analysis (ADA) course** and is released under the **CC BY-SA 4.0 license**, crediting the **CMU Movie Summary Corpus**.  
+This dataset was developed as part of a project for the 2024 Fall EPFL CS-401 Applied Data Analysis (ADA) course and is released under the CC BY-SA 4.0 license, with credit to the CMU Movie Summary Corpus.
 
 ---
 
